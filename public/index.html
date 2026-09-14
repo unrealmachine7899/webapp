@@ -41,7 +41,7 @@
     return /^[a-z0-9-]+(\.[a-z]{2,})+/i.test(str) && !str.includes(' ');
   }
 
-function executeSearch(rawInput) {
+  function executeSearch(rawInput) {
     const input = rawInput.trim();
     if (!input) return;
 
