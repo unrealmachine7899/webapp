@@ -2,27 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Search</title>
+  <title>Proxy Search</title>
   <style>
-    body { background: #111; color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding-top: 100px; }
-    .search-box { position: relative; width: 450px; }
-    #search-bar { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #333; background: #222; color: #fff; font-size: 16px; box-sizing: border-box; }
-    #suggestions { position: absolute; top: 100%; left: 0; right: 0; background: #1b1b1b; border: 1px solid #333; border-radius: 8px; display: none; margin-top: 6px; overflow: hidden; z-index: 10; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    .header { display: flex; align-items: center; justify-content: center; padding: 12px; background: #1a1a1a; border-bottom: 1px solid #333; position: relative; z-index: 20; }
+    .search-box { position: relative; width: 600px; max-width: 90%; }
+    #search-bar { width: 100%; padding: 10px 16px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; font-size: 15px; outline: none; }
+    #suggestions { position: absolute; top: 100%; left: 0; right: 0; background: #181818; border: 1px solid #444; border-radius: 6px; display: none; margin-top: 4px; overflow: hidden; z-index: 30; }
     #suggestions.show { display: block; }
     .sug-item { padding: 10px 16px; cursor: pointer; font-size: 14px; color: #ccc; }
     .sug-item:hover { background: #333; color: #fff; }
+    .frame-container { flex: 1; width: 100%; height: 100%; background: #fff; }
+    iframe { width: 100%; height: 100%; border: none; }
   </style>
 </head>
 <body>
 
-<div class="search-box">
-  <input id="search-bar" type="text" placeholder="Search DuckDuckGo or enter URL..." autocomplete="off">
-  <div id="suggestions"></div>
+<div class="header">
+  <div class="search-box">
+    <input id="search-bar" type="text" placeholder="Search DuckDuckGo or enter URL..." autocomplete="off">
+    <div id="suggestions"></div>
+  </div>
+</div>
+
+<div class="frame-container">
+  <iframe id="proxy-frame" src="about:blank"></iframe>
 </div>
 
 <script>
   const bar = document.getElementById('search-bar');
   const sugs = document.getElementById('suggestions');
+  const frame = document.getElementById('proxy-frame');
   let timer = null;
 
   function isUrl(str) {
@@ -36,12 +47,13 @@
 
     let targetUrl = input;
     if (!isUrl(input)) {
-      targetUrl = 'https://duckduckgo.com/?q=' + encodeURIComponent(input);
+      targetUrl = 'https://duckduckgo.com/?q=' + encodeURIComponent(input) + '&kae=d';
     } else if (!/^https?:\/\//i.test(input)) {
       targetUrl = 'https://' + input;
     }
 
-    window.location.href = targetUrl;
+    sugs.classList.remove('show');
+    frame.src = '/proxy?url=' + encodeURIComponent(targetUrl);
   }
 
   function fetchSuggestions(query) {
