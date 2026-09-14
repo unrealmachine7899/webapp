@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    .search-box { position: relative; width: 360px; font-family: sans-serif; }
+    #search-bar { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; }
+    #suggestions { position: absolute; top: 100%; left: 0; right: 0; background: #181818; border: 1px solid #444; border-radius: 6px; display: none; margin-top: 4px; z-index: 10; }
+    #suggestions.show { display: block; }
+    .sug-item { padding: 8px 12px; color: #eee; cursor: pointer; font-size: 14px; }
+    .sug-item:hover { background: #333; }
+  </style>
+</head>
+<body>
+
+<div class="search-box">
+  <input id="search-bar" type="text" placeholder="Search DuckDuckGo or enter URL..." autocomplete="off">
+  <div id="suggestions"></div>
+</div>
+
+<script>
+  const bar = document.getElementById('search-bar');
+  const sugs = document.getElementById('suggestions');
+  let timer = null;
+
+  // Detects if the input string is a domain name or URL vs a text query
+  function isUrl(str) {
+    if (/^https?:\/\//i.test(str)) return true;
+    return /^[a-z0-9-]+(\.[a-z]{2,})+/i.test(str) && !str.includes(' ');
+  }
+
+  // Generates the search URL with specific display parameters
+  function buildSearchUrl(rawInput) {
+    const input = rawInput.trim();
+    if (isUrl(input)) {
+      return /^https?:\/\//i.test(input) ? input : 'https://' + input;
+    }
+    // Parameters: kae=d (Dark Mode), k1=-1 (Disable Ads), kp=-2 (Suppress Header Prompts)
+    return 'https://duckduckgo.com/?q=' + encodeURIComponent(input) + '&kae=d&k1=-1&kp=-2';
+  }
+
+  function executeSearch(query) {
+    if (!query.trim()) return;
+    window.location.href = buildSearchUrl(query);
+  }
+
+  // Fetches live autocomplete suggestions directly from DuckDuckGo
+  function fetchSuggestions(query) {
+    fetch('https://duckduckgo.com/ac/?q=' + encodeURIComponent(query) + '&type=list')
+      .then(res => res.json())
+      .then(data => {
+        const results = data && data[1] ? data[1].slice(0, 5) : [];
+        renderSuggestions(results);
+      })
+      .catch(() => sugs.classList.remove('show'));
+  }
+
+  function renderSuggestions(items) {
+    sugs.innerHTML = '';
+    if (!items.length) { sugs.classList.remove('show'); return; }
+
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'sug-item';
+      div.textContent = item;
+      div.addEventListener('click', () => executeSearch(item));
+      sugs.appendChild(div);
+    });
+    sugs.classList.add('show');
+  }
+
+  // Debounce input to limit API requests
+  bar.addEventListener('input', () => {
+    clearTimeout(timer);
+    const query = bar.value.trim();
+    if (!query) { sugs.classList.remove('show'); return; }
+    timer = setTimeout(() => fetchSuggestions(query), 200);
+  });
+
+  bar.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') executeSearch(bar.value);
+  });
+</script>
+
+</body>
+</html>
