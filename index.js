@@ -31,6 +31,7 @@ app.get('/proxy', async (req, res) => {
 
     const contentType = response.headers.get('content-type') || '';
 
+    // Strip frame-blocking security headers
     response.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();
       if (!['x-frame-options', 'content-security-policy', 'content-encoding'].includes(lowerKey)) {
@@ -40,12 +41,36 @@ app.get('/proxy', async (req, res) => {
 
     if (contentType.includes('text/html')) {
       let html = await response.text();
-      const baseTag = `<base href="${targetUrl}">`;
-      if (html.includes('<head>')) {
-        html = html.replace('<head>', `<head>${baseTag}`);
-      } else {
-        html = baseTag + html;
-      }
+
+      // Injects link and form handler to force iframe traffic through /proxy
+      const injector = `
+        <base href="${targetUrl}">
+        <script>
+          document.addEventListener('click', function(e) {
+            const a = e.target.closest('a');
+            if (a && a.href) {
+              e.preventDefault();
+              window.location.href = '/proxy?url=' + encodeURIComponent(a.href);
+            }
+          }, true);
+
+          document.addEventListener('submit', function(e) {
+            const form = e.target;
+            if (form.action) {
+              e.preventDefault();
+              const formData = new FormData(form);
+              const params = new URLSearchParams(formData).toString();
+              const method = (form.method || 'GET').toUpperCase();
+              if (method === 'GET') {
+                const target = form.action + (form.action.includes('?') ? '&' : '?') + params;
+                window.location.href = '/proxy?url=' + encodeURIComponent(target);
+              }
+            }
+          }, true);
+        </script>
+      `;
+
+      html = html.includes('<head>') ? html.replace('<head>', `<head>${injector}`) : injector + html;
       res.send(html);
     } else {
       const arrayBuffer = await response.arrayBuffer();
